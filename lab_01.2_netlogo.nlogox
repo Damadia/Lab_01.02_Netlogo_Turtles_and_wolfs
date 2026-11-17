@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <model version="NetLogo 7.0.4" snapToGrid="true">
-  <code><![CDATA[turtles-own [
+  <code><![CDATA[breed[wolves wolf]
+breed[cows cow]
+
+cows-own [
   energia
 ]
+wolves-own[
+ energiaW 
+ llenoW
+]
+
 patches-own[
  regeneracion 
 ]
@@ -12,12 +20,22 @@ to setup
   resize-world -22 22 -22 22
   
   ; Inicializamos las tortugas (herbívoros)
-  create-turtles poblacion_inicial [
+  create-cows poblacion_inicial [
     setxy random-xcor random-ycor
-    set shape "turtle"
+    set shape "cow"
     set color red
     set energia random 50 + 50 ; Energía inicial entre 50 y 100
   ]
+  
+  ; Inicializamos los lobos (cazadores)
+  create-wolves poblacion_inicial_w[
+    set shape "wolf"
+    set color [31 5 38]
+    setxy random-xcor random-ycor
+    set energiaW 120 + random 20
+    set llenoW 25
+  ]
+  
   ; Inicializamos los parches con recurso disponible (pasto)
   ask patches [
     set pcolor green
@@ -27,8 +45,11 @@ to setup
 end
 
 to go
-  if not any? turtles [ stop ]
-  ask turtles [
+  if not any? cows and not any? wolves
+  [ stop ]
+  
+  
+  ask cows [
     ; Etiqueta para ver la cantidad de energía
     set label energia
     set label-color white
@@ -38,6 +59,14 @@ to go
     fd 1
     ; Costo metabólico: moverse reduce energía
     set energia energia - 1
+   
+    ; Regla para huir
+    let threat one-of wolves in-cone vision_magnitud_s vision_angulo_s
+    if threat != nobody [
+      face threat
+      rt 180                   
+      fd 1
+    ]
     
     ; TODO: Implementar las reglas de Alimentación, Reproducción y Muerte aquí
     ; Regla para comer
@@ -61,6 +90,46 @@ to go
     if energia <= 0[
       die
     ]
+  ]
+  
+  ask wolves[
+    set label energiaW
+    set label-color [155 217 232]
+    
+    
+    ; Regla para moverse
+    rt (random 101) - 50
+    fd 1
+    ; Costo metabólico: moverse reduce energía
+    set energiaW energiaW - 1
+    set llenoW llenoW - 1 - random 2
+    if llenoW <= -5[
+      set energiaW energiaW - 80
+      set llenoW -5
+    ]
+    
+    ; Regla para acercarse
+    let prey one-of cows in-cone vision_magnitud_w vision_angulo_w
+    if prey != nobody and llenoW <= 0[
+      face prey
+      fd 3
+    ]
+    
+    ; Regla para comer
+    let target min-one-of cows [ distance myself ]   ; la vaca más cercana
+    if target != nobody and llenoW <= 10[
+      let d distance target
+      if d <= radio_comer_w [
+        ask target [ die ]
+        set energiaW energiaW + 150 - llenoW * 2
+        set llenoW 60
+    ]
+  ]
+    
+    ; Regla para morir
+    if energiaW <= 0[
+      die
+    ]
     
   ]
   
@@ -70,7 +139,7 @@ to go
     ; Regla para regenerar el pasto
     set regeneracion regeneracion - 1 - random 2
     if regeneracion <= 0[
-      set regeneracion 180
+      set regeneracion 130
       set pcolor green
     ]
     
@@ -82,11 +151,17 @@ to go
   tick
 end]]></code>
   <widgets>
-    <view x="368" wrappingAllowedX="true" y="10" frameRate="30.0" minPycor="-22" height="589" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="true" width="589" tickCounterLabel="ticks" maxPycor="22" updateMode="0" maxPxcor="22" minPxcor="-22"></view>
+    <view x="355" wrappingAllowedX="true" y="35" frameRate="30.0" minPycor="-22" height="589" showTickCounter="true" patchSize="13.0" fontSize="10" wrappingAllowedY="true" width="589" tickCounterLabel="ticks" maxPycor="22" updateMode="0" maxPxcor="22" minPxcor="-22"></view>
     <button x="1080" y="40" height="40" disableUntilTicks="false" forever="true" kind="Observer" width="55">Go</button>
     <button x="1170" y="40" height="40" disableUntilTicks="false" forever="false" kind="Observer" width="55">Setup</button>
-    <slider x="1080" step="1" y="110" max="400" width="250" display="poblacion_inicial" height="50" min="10" direction="Horizontal" default="50.0" variable="poblacion_inicial" units="tortugas"></slider>
-    <slider x="1080" step="1" y="180" max="500" width="250" display="mult_ener" height="50" min="0" direction="Horizontal" default="20.0" variable="mult_ener"></slider>
+    <slider x="1080" step="1" y="110" max="400" width="250" display="poblacion_inicial" height="50" min="1" direction="Horizontal" default="107.0" variable="poblacion_inicial" units="tortugas"></slider>
+    <slider x="1080" step="1" y="180" max="500" width="250" display="mult_ener" height="50" min="0" direction="Horizontal" default="59.0" variable="mult_ener"></slider>
+    <slider x="1400" step="1" y="110" max="200" width="250" display="poblacion_inicial_w" height="50" min="0" direction="Horizontal" default="30.0" variable="poblacion_inicial_w"></slider>
+    <slider x="1395" step="1" y="255" max="25" width="250" display="vision_magnitud_w" height="50" min="1" direction="Horizontal" default="12.0" variable="vision_magnitud_w"></slider>
+    <slider x="1395" step="1" y="335" max="360" width="250" display="vision_angulo_w" height="50" min="0" direction="Horizontal" default="60.0" variable="vision_angulo_w"></slider>
+    <slider x="1085" step="1" y="255" max="15" width="250" display="vision_magnitud_s" height="50" min="1" direction="Horizontal" default="6.0" variable="vision_magnitud_s"></slider>
+    <slider x="1085" step="1" y="335" max="360" width="250" display="vision_angulo_s" height="50" min="0" direction="Horizontal" default="302.0" variable="vision_angulo_s"></slider>
+    <slider x="1395" step="1" y="425" max="3" width="250" display="radio_comer_w" height="50" min="1" direction="Horizontal" default="1.0" variable="radio_comer_w"></slider>
   </widgets>
   <info>## WHAT IS IT?
 
